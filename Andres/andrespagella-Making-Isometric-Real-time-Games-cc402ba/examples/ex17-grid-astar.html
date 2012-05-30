@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Example 17 - (A* working on a grid with unset indexes using web workers)</title>
+		
+		<script>
+
+			/**
+			 *	TECHNICAL NOTE
+			 *	This example may not run if executed locally (file://) on some browsers due to the same origin policy restriction (DOMException 18).
+			 *	You can fix this by uploading this example to a local/remote webserver.
+			 */ 
+
+			window.onload = function () {
+				var tileMap = [];
+
+				var path = {
+					start: null,
+					stop: null	
+				}
+
+				var tile = {
+					width: 6,
+					height: 6
+				}
+
+				var grid = {
+					width: 100,
+					height: 100
+				}
+
+				var canvas = document.getElementById('myCanvas');
+				canvas.addEventListener('click', handleClick, false);
+
+				var c = canvas.getContext('2d');
+
+				// Generate 1000 random elements
+				for (var i = 0; i < 1000; i++) {
+					generateRandomElement();
+				}
+
+				// Draw the entire grid
+				draw();				
+
+				function handleClick(e) {
+					// When a click is detected, translate the mouse coordinates to pixel coordinates
+					var row = Math.floor((e.clientX - 10) / tile.width);
+					var column = Math.floor((e.clientY - 10) / tile.height);
+
+					if (tileMap[row] == null) {
+						tileMap[row] = [];
+					}
+
+					if (tileMap[row][column] !== 0 && tileMap[row][column] !== 1) {
+						tileMap[row][column] = 0;
+
+						if (path.start === null) {
+							path.start = {x: row, y: column};
+						} else {
+							path.stop = {x: row, y: column};
+
+							callWorker(path, processWorkerResults);
+
+							path.start = null;
+							path.stop = null;
+						}
+
+						draw();
+					}
+				}
+
+				function callWorker(path, callback) {
+					var w = new Worker('astar.js');
+
+					w.postMessage({
+						tileMap: tileMap,
+						grid: {
+							width: grid.width,
+							height: grid.height
+						},
+						start: path.start,
+						stop: path.stop
+					});
+					w.onmessage = callback;
+				}
+
+				function processWorkerResults(e) {
+					if (e.data.length > 0) {
+						for (var i = 0, len = e.data.length; i < len; i++) {
+							if (tileMap[e.data[i].x] === undefined) {
+								tileMap[e.data[i].x] = [];
+							}
+
+							tileMap[e.data[i].x][e.data[i].y] = 0;
+						}
+					}
+
+					draw();
+				}
+
+				function generateRandomElement() {
+					var rndRow = Math.floor(Math.random() * (grid.width + 1));
+					var rndCol = Math.floor(Math.random() * (grid.height + 1));
+
+
+					if (tileMap[rndRow] == null) {
+						tileMap[rndRow] = [];
+					}
+					tileMap[rndRow][rndCol] = 1;					
+				}
+
+				function draw(srcX, srcY, destX, destY) {
+					srcX = (srcX === undefined) ? 0 : srcX;
+					srcY = (srcY === undefined) ? 0 : srcY;
+					destX = (destX === undefined) ? canvas.width : destX;
+					destY = (destY === undefined) ? canvas.height : destY;
+
+					c.fillStyle = '#FFFFFF';
+					c.fillRect (srcX, srcY, destX + 1, destY + 1);
+					c.fillStyle = '#000000';
+
+					var startRow = 0;
+					var startCol = 0;
+					var rowCount = startRow + Math.floor(canvas.width / tile.width) + 1;
+					var colCount = startCol + Math.floor(canvas.height / tile.height) + 1;
+
+					rowCount = ((startRow + rowCount) > grid.width) ? grid.width : rowCount;
+					colCount = ((startCol + colCount) > grid.height) ? grid.height : colCount;
+
+					for (var row = startRow; row < rowCount; row++) {
+						for (var col = startCol; col < colCount; col++) {
+							var tilePositionX = tile.width * row;
+							var tilePositionY = tile.height * col;
+
+							if (tilePositionX >= srcX && tilePositionY >= srcY &&
+								tilePositionX <= (srcX + destX) &&
+								tilePositionY <= (srcY + destY)) {
+
+								if (tileMap[row] != null && tileMap[row][col] != null) {
+									if (tileMap[row][col] == 0) {
+										c.fillStyle = '#CC0000';
+									} else {
+										c.fillStyle = '#0000FF';
+									}
+
+									c.fillRect(tilePositionX, tilePositionY, tile.width, tile.height);
+								} else {
+									c.strokeStyle = '#CCCCCC';
+									c.strokeRect(tilePositionX, tilePositionY, tile.width, tile.height);
+								}
+							}
+						}
+					}
+				}
+			}
+		</script>
+    </head>
+    <body>
+		<canvas id="myCanvas" width="600" height="300"></canvas>
+		<br />
+
+    </body>
+</html>
