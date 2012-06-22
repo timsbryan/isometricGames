@@ -25,6 +25,8 @@ var Sprite=function(src, width, height, offsetX, offsetY, frames, duration){
 
     Sprite.prototype.setSpritesheet=function(src){
         if(src instanceof Image){
+            this.spritesheet=src;
+            }else{
             this.spritesheet=new Image();
             this.spritesheet.src=src;
         }
